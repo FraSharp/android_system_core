@@ -48,7 +48,6 @@
 #include <libgsi/libgsi.h>
 #include <processgroup/processgroup.h>
 #include <processgroup/setup.h>
-#include <selinux/android.h>
 
 #ifndef RECOVERY
 #include <binder/ProcessState.h>
@@ -67,7 +66,6 @@
 #include "reboot.h"
 #include "reboot_utils.h"
 #include "security.h"
-#include "selinux.h"
 #include "sigchld_handler.h"
 #include "system/core/init/property_service.pb.h"
 #include "util.h"
@@ -715,7 +713,6 @@ int SecondStageMain(int argc, char** argv) {
 
     // Make the time that init started available for bootstat to log.
     property_set("ro.boottime.init", getenv("INIT_STARTED_AT"));
-    property_set("ro.boottime.init.selinux", getenv("INIT_SELINUX_TOOK"));
 
     // Set libavb version for Framework-only OTA match in Treble build.
     const char* avb_version = getenv("INIT_AVB_VERSION");
@@ -729,14 +726,8 @@ int SecondStageMain(int argc, char** argv) {
 
     // Clean up our environment.
     unsetenv("INIT_STARTED_AT");
-    unsetenv("INIT_SELINUX_TOOK");
     unsetenv("INIT_AVB_VERSION");
     unsetenv("INIT_FORCE_DEBUGGABLE");
-
-    // Now set up SELinux for second stage.
-    SelinuxSetupKernelLogging();
-    SelabelInitialize();
-    SelinuxRestoreContext();
 
     Epoll epoll;
     if (auto result = epoll.Open(); !result) {
