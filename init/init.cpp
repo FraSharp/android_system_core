@@ -53,7 +53,6 @@
 #include <libgsi/libgsi.h>
 #include <processgroup/processgroup.h>
 #include <processgroup/setup.h>
-#include <selinux/android.h>
 
 #include "action_parser.h"
 #include "builtins.h"
@@ -70,8 +69,6 @@
 #include "reboot.h"
 #include "reboot_utils.h"
 #include "security.h"
-#include "selabel.h"
-#include "selinux.h"
 #include "service.h"
 #include "service_parser.h"
 #include "sigchld_handler.h"
@@ -673,9 +670,6 @@ static void RecordStageBoottimes(const boot_clock::time_point& second_stage_star
 
     SetProperty("ro.boottime.init.first_stage",
                 std::to_string(selinux_start_time_ns - first_stage_start_time_ns));
-    SetProperty("ro.boottime.init.selinux",
-                std::to_string(second_stage_start_time.time_since_epoch().count() -
-                               selinux_start_time_ns));
 }
 
 void SendLoadPersistentPropertiesMessage() {
@@ -749,11 +743,6 @@ int SecondStageMain(int argc, char** argv) {
     // Mount extra filesystems required during second stage init
     MountExtraFilesystems();
 
-    // Now set up SELinux for second stage.
-    SelinuxSetupKernelLogging();
-    SelabelInitialize();
-    SelinuxRestoreContext();
-
     Epoll epoll;
     if (auto result = epoll.Open(); !result.ok()) {
         PLOG(FATAL) << result.error();
@@ -803,7 +792,6 @@ int SecondStageMain(int argc, char** argv) {
 
     am.QueueBuiltinAction(SetupCgroupsAction, "SetupCgroups");
     am.QueueBuiltinAction(SetKptrRestrictAction, "SetKptrRestrict");
-    am.QueueBuiltinAction(TestPerfEventSelinuxAction, "TestPerfEventSelinux");
     am.QueueEventTrigger("early-init");
 
     // Queue an action that waits for coldboot done so we know ueventd has set up all of /dev...
